@@ -1,0 +1,58 @@
+Sub ImportTextAsset()
+
+    Dim fso As Scripting.FileSystemObject
+    Dim fol As Scripting.Folder
+    
+    Set fso = New Scripting.FileSystemObject
+    Set fol = fso.GetFolder("...\TextAsset-Processed")
+
+    Dim fil As Scripting.File
+    For Each fil In fol.Files
+
+        Dim adoStream As ADODB.Stream
+        Set adoStream = New ADODB.Stream
+        
+        adoStream.Charset = "UTF-8" 'set the correct charset
+        adoStream.Open
+        adoStream.LoadFromFile fil.Path
+        
+        Dim lststr As String
+        lststr = adoStream.ReadText() 'adoStream.ReadText
+        lststr = _
+        Replace(lststr, "</entry>", "</entry>" & vbTab)
+        lststr = Replace(lststr, "<entries>", "")
+        
+        Dim str() As String, arr As Variant
+        str = Split(lststr, vbTab): arr = str
+        ReDim Preserve arr(1 To UBound(arr) + 1)
+        
+        Dim i As Long
+        For i = LBound(arr) To UBound(arr)
+            arr(i) = Mid(arr(i), 2)
+        Next i
+        
+        Dim col As Long
+        Select Case Left(fil.Name, 3)
+        Case "EN_": col = 2
+        Case "ZH_": col = 1
+        End Select
+        
+        Dim row As Long
+        row = Cells(Rows.Count, col).End(xlUp).Offset(1).row
+        
+        With Cells(row, col)
+            .Value = fil.Name
+            .Interior.Color = rgbAntiqueWhite
+        End With
+        
+        Cells(row + 1, col).Resize(UBound(arr), 1) = _
+        WorksheetFunction.Transpose(arr)
+
+skipskip:
+    
+    Next fil
+    
+    Erase arr
+    Columns("A:E").WrapText = False
+
+End Sub
