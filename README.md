@@ -1,2 +1,2 @@
 # VBA-TextAsset-Game
-Import Text Files from Video Games asset into Excel sheets.
+Import text assets from Video Games into Excel sheets.
