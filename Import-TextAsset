@@ -1,6 +1,7 @@
 Option Explicit
 Private posRow As Long, posCol As Integer, strposCol As String
-Private Const strfol As String = "E:\Phi Phi\Extract Assets\Hollow Knight\TextAsset-Processed"
+Private Const strfol As String = _
+    "E:\Phi Phi\Extract Assets\Hollow Knight\TextAsset-Processed" 'Change Directory here (enclosed in "")
 
 Sub ImportTextAsset()
 
