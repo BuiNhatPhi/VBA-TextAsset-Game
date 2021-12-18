@@ -1,0 +1,137 @@
+Option Explicit
+Private posRow As Long, posCol As Integer, strposCol As String
+Private Const strfol As String = _
+    "C:\...\TextAsset-Processed" 'Change Folder Directory here (enclosed in "")
+
+Sub ImportTextAsset()
+
+    Dim fso As Scripting.FileSystemObject
+    Set fso = New Scripting.FileSystemObject
+    
+    Dim fol As Scripting.Folder
+    Set fol = fso.GetFolder(strfol)
+
+    Dim fil As Scripting.File
+    For Each fil In fol.Files
+    
+        Dim str() As String
+        str = func_StrArrayFromFile(fil.Path)
+        
+        Dim arr1 As Variant, arr2 As Variant, arr As Variant
+        arr1 = func_CleanUp("""(.*?)""", str()) 'Edit Pattern here
+        arr2 = func_CleanUp(">(.*?)<", str()) 'Edit Pattern here
+        arr = func_ArrayExport(fil.Name, arr1, arr2)
+        
+        Call sub_CalculatePosition(fil.Name)
+        Call sub_ExportData(posRow, posCol, arr)
+        
+        Cells(1, posCol).EntireColumn.AutoFit
+        Cells(1, posCol + 1).EntireColumn.ColumnWidth = 50
+        Cells(1, posCol + 2).EntireColumn.ColumnWidth = 70
+    
+    Next fil
+
+    With Range(Cells(1), Cells(, posCol)).EntireColumn
+        .WrapText = False
+        .HorizontalAlignment = xlLeft
+    End With
+    
+    Set fol = Nothing: Set fso = Nothing
+    Erase str(): Erase arr: Erase arr1: Erase arr2
+    posRow = Empty: posCol = Empty: strposCol = ""
+
+End Sub
+    
+    Private Function func_StrArrayFromFile(fil_Directory As String) As String() '() is required
+    
+        Dim regex As New RegExp
+        regex.Global = True
+        regex.Pattern = "<entries>\n|</entries>\n"
+    
+        Dim adoStream As ADODB.Stream
+        Set adoStream = New ADODB.Stream
+        
+        With adoStream
+            .Charset = "UTF-8" 'set the correct charset
+            .Open
+            .LoadFromFile fil_Directory
+        End With
+        
+        Dim str As String
+        str = adoStream.ReadText()
+        str = regex.Replace(str, "")
+        str = IIf(Right(str, 1) = vbLf, Left(str, Len(str) - 1), str)
+    
+        func_StrArrayFromFile = Split(regex.Replace(str, ""), vbLf)
+        Set adoStream = Nothing
+    
+    End Function
+    
+    Private Function func_CleanUp(RegExPattern As String, ByVal arr As Variant) As Variant
+    
+        Dim regex As New RegExp
+        regex.Global = True
+        regex.Pattern = RegExPattern
+        
+        Dim i As Long
+        For i = LBound(arr) To UBound(arr)
+            Dim matches As Object
+            Set matches = regex.Execute(arr(i))
+            
+            Dim str As String
+            str = Trim(Mid(matches(0), 2, Len(matches(0)) - 2))
+            str = IIf(str = "", "xlEmpty", str)
+            
+            arr(i) = str
+        Next i
+        
+        func_CleanUp = arr
+        Set matches = Nothing
+    
+    End Function
+    
+    Private Function func_ArrayExport( _
+        FileName As String, _
+        ByVal arr1 As Variant, _
+        ByVal arr2 As Variant) As Variant
+    
+        Dim arr As Variant
+        ReDim arr(LBound(arr1) + 1 To UBound(arr1) + 1, 1 To 3)
+        
+        Dim i As Long
+        For i = LBound(arr) To UBound(arr)
+            arr(i, 1) = FileName
+            arr(i, 2) = arr1(i - 1)
+            arr(i, 3) = arr2(i - 1)
+        Next i
+        
+        func_ArrayExport = arr
+    
+    End Function
+    
+    Private Sub sub_CalculatePosition(FileName As String)
+
+        posCol = IIf(posCol = 0, 1, posCol)
+        strposCol = IIf(strposCol = "", Left(FileName, 3), strposCol)
+        
+        If Left(FileName, 3) <> strposCol Then
+            strposCol = Left(FileName, 3)
+            posCol = posCol + 3
+        End If
+
+        posRow = Cells(Rows.Count, posCol).End(xlUp).Offset(1).row
+    
+    End Sub
+    
+    Private Sub sub_ExportData(numRow As Long, numCol As Integer, ByVal arr As Variant)
+        
+        Cells(numRow, numCol).Resize(UBound(arr, 1), UBound(arr, 2)) = arr
+        arr = Array("Name file", "Title", "Content")
+        
+        Cells(1, numCol).Resize(1, UBound(arr) + 1) = arr
+        With Cells(1, numCol).Resize(1, UBound(arr) + 1)
+            .Interior.Color = rgbYellow
+            .Font.Bold = True
+        End With
+        
+    End Sub
